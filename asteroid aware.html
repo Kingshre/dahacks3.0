@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Impact Awareness & Protection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            background-color: #1e1e1e;
+            margin: 0;
+            padding: 0;
+        }
+        header, section {
+            text-align: center;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #ff9f43;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #222;
+            color: #fff;
+            border-radius: 8px;
+        }
+        .simulation input[type="range"] {
+            width: 100%;
+            margin: 15px 0;
+        }
+        .info-box {
+            background-color: #333;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+        .impact-result {
+            font-size: 18px;
+            color: #ff6347;
+        }
+        footer {
+            margin-top: 20px;
+            color: #ccc;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #ff9f43;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #ff6f00;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Asteroid Impact Awareness & Protection</h1>
+</header>
+
+<section>
+    <div class="container">
+        <h2>What are Near-Earth Objects (NEOs)?</h2>
+        <p>NEOs are comets and asteroids that have been nudged by the gravitational attraction of nearby planets into orbits that allow them to enter the Earth’s neighborhood.</p>
+        <div class="info-box">
+            <p>Scientists track NEOs using telescopes and radars, which help predict their paths and potential impact risks. By tracking these objects, we can calculate how close they might come to Earth.</p>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="container simulation">
+        <h2>Impact Simulation</h2>
+        <p>Choose an asteroid size to see its potential impact:</p>
+        <input type="range" id="asteroidSize" min="1" max="10" step="1" value="5">
+        <p>Size: <span id="sizeValue">5</span> (1 = Small Meteorite, 10 = Huge Asteroid)</p>
+        <button class="btn" onclick="calculateImpact()">Simulate Impact</button>
+        <p class="impact-result" id="impactResult"></p>
+    </div>
+</section>
+
+<section>
+    <div class="container">
+        <h2>Current Mitigation Efforts</h2>
+        <div class="info-box">
+            <h3>DART Mission</h3>
+            <p>The Double Asteroid Redirection Test (DART) is NASA's first mission to test technology for defending Earth against potential asteroid impacts. It aims to change the orbit of an asteroid by colliding a spacecraft with it.</p>
+        </div>
+        <div class="info-box">
+            <h3>NEO Surveyor Mission</h3>
+            <p>The NEO Surveyor is a proposed space-based infrared telescope to track potentially hazardous asteroids and comets, improving detection rates and enhancing our ability to prevent impacts.</p>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <p>&copy; 2024 Asteroid Impact Awareness. All rights reserved.</p>
+</footer>
+
+<script>
+    const asteroidSizeSlider = document.getElementById('asteroidSize');
+    const sizeValueDisplay = document.getElementById('sizeValue');
+    const impactResultDisplay = document.getElementById('impactResult');
+
+    asteroidSizeSlider.oninput = function() {
+        sizeValueDisplay.innerText = this.value;
+    };
+
+    function calculateImpact() {
+        const size = asteroidSizeSlider.value;
+        let impactResult = '';
+
+        if (size <= 3) {
+            impactResult = 'Minor impact, likely burns up in atmosphere.';
+        } else if (size <= 6) {
+            impactResult = 'Moderate impact, could cause regional damage.';
+        } else if (size <= 8) {
+            impactResult = 'Significant impact, severe damage in a large area.';
+        } else {
+            impactResult = 'Massive impact, potentially catastrophic for life on Earth.';
+        }
+
+        impactResultDisplay.innerText = impactResult;
+    }
+</script>
+
+</body>
+</html>

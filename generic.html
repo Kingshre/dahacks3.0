@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Debris Game</title>
+  <style>
+    body { text-align: center; background-color: black; color: white; }
+    canvas { background-color: #111; margin-top: 20px; }
+    .button {
+      display: none;
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Space Debris Dodge</h1>
+  <p>Use the left and right arrow keys to dodge space debris!</p>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <p id="score">Score: 0 | Health: 5 | High Score: 0 | Streak: 0</p>
+  <button id="restartButton" class="button">Restart</button>
+  <button id="exitButton" class="button">Exit</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const restartButton = document.getElementById("restartButton");
+    const exitButton = document.getElementById("exitButton");
+
+    // Game Variables
+    const spaceship = { x: canvas.width / 2, y: canvas.height - 60, width: 30, height: 40, speed: 7 };
+    const debrisList = [];
+    const powerUpList = [];
+    let score = 0;
+    let health = 5;
+    let highScore = 0;
+    let gameOver = false;
+    let shieldActive = false;
+    let streak = 0;
+    let debrisFrequency = 0.05;
+    let debrisSpeedRange = { min: 3, max: 7 };
+
+    // Track Keys Pressed
+    const keys = {};
+
+    document.addEventListener("keydown", (event) => { keys[event.key] = true; });
+    document.addEventListener("keyup", (event) => { keys[event.key] = false; });
+
+    // Move Spaceship
+    function moveSpaceship() {
+      if (keys["ArrowLeft"] && spaceship.x > 0) {
+        spaceship.x -= spaceship.speed;
+      }
+      if (keys["ArrowRight"] && spaceship.x < canvas.width - spaceship.width) {
+        spaceship.x += spaceship.speed;
+      }
+    }
+
+    // Draw Spaceship as Detailed Triangle with Flame
+    function drawSpaceship() {
+      ctx.beginPath();
+      ctx.moveTo(spaceship.x, spaceship.y + spaceship.height);  // Flame's tip
+      ctx.lineTo(spaceship.x - 10, spaceship.y + spaceship.height + 20); // Left of the flame
+      ctx.lineTo(spaceship.x + 10, spaceship.y + spaceship.height + 20); // Right of the flame
+      ctx.closePath();
+      ctx.fillStyle = "orange";
+      ctx.fill();
+
+      ctx.fillStyle = shieldActive ? "yellow" : "#3399FF"; // Outer Body
+      ctx.beginPath();
+      ctx.moveTo(spaceship.x, spaceship.y);
+      ctx.lineTo(spaceship.x - spaceship.width / 2, spaceship.y + spaceship.height);
+      ctx.lineTo(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = shieldActive ? "gold" : "#1a73e8"; // Inner Body
+      ctx.beginPath();
+      ctx.moveTo(spaceship.x, spaceship.y);
+      ctx.lineTo(spaceship.x - spaceship.width / 4, spaceship.y + spaceship.height);
+      ctx.lineTo(spaceship.x + spaceship.width / 4, spaceship.y + spaceship.height);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "lightblue"; // Window
+      ctx.beginPath();
+      ctx.arc(spaceship.x, spaceship.y + 10, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function generateDebris() {
+      const size = Math.floor(Math.random() * 50) + 20;
+      const x = Math.floor(Math.random() * (canvas.width - size));
+      const speed = Math.floor(Math.random() * (debrisSpeedRange.max - debrisSpeedRange.min) + debrisSpeedRange.min);
+      const type = Math.random() < 0.1 ? "explosive" : Math.random() < 0.2 ? "speedy" : "normal";
+      debrisList.push({ x, y: -size, width: size, height: size, speed, type });
+    }
+
+    function generatePowerUp() {
+      const x = Math.floor(Math.random() * (canvas.width - 20));
+      const y = -20;
+      const type = Math.random() < 0.5 ? "health" : "shield";
+      powerUpList.push({ x, y, width: 20, height: 20, type });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      moveSpaceship();
+
+      debrisList.forEach((debris, index) => {
+        debris.y += debris.speed;
+        if (debris.y > canvas.height) {
+          debrisList.splice(index, 1);
+          score++;
+          streak++;
+          updateComboStreak();
+          increaseDifficulty();
+        }
+        if (
+          spaceship.x - spaceship.width / 2 < debris.x + debris.width &&
+          spaceship.x + spaceship.width / 2 > debris.x &&
+          spaceship.y < debris.y + debris.height &&
+          spaceship.y + spaceship.height > debris.y
+        ) {
+          if (!shieldActive) {
+            health -= (debris.type === "explosive" ? 2 : 1);
+            streak = 0;
+          }
+          debrisList.splice(index, 1);
+          if (health <= 0) endGame();
+        }
+      });
+
+      powerUpList.forEach((powerUp, index) => {
+        powerUp.y += 3;
+        if (powerUp.y > canvas.height) {
+          powerUpList.splice(index, 1);
+        }
+        if (
+          spaceship.x - spaceship.width / 2 < powerUp.x + powerUp.width &&
+          spaceship.x + spaceship.width / 2 > powerUp.x &&
+          spaceship.y < powerUp.y + powerUp.height &&
+          spaceship.y + spaceship.height > powerUp.y
+        ) {
+          health += (powerUp.type === "health" ? 1 : 0);
+          shieldActive = powerUp.type === "shield";
+          powerUpList.splice(index, 1);
+        }
+      });
+
+      if (Math.random() < debrisFrequency) generateDebris();
+      if (Math.random() < 0.005) generatePowerUp();
+
+      if (!gameOver) {
+        document.getElementById("score").textContent = `Score: ${score} | Health: ${health} | High Score: ${highScore} | Streak: ${streak}`;
+      }
+    }
+
+    function updateComboStreak() {
+      if (streak % 5 === 0 && streak > 0) score += 10;
+    }
+
+    function increaseDifficulty() {
+      if (score % 10 === 0) {
+        debrisFrequency += 0.01;
+        debrisSpeedRange.min += 1;
+        debrisSpeedRange.max += 1;
+      }
+    }
+
+    function endGame() {
+      gameOver = true;
+      if (score > highScore) highScore = score;
+      renderGameOver();
+      setTimeout(() => {
+        showButtons();
+      }, 5000); // Show buttons after 5 seconds
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawSpaceship();
+
+      ctx.fillStyle = "red";
+      debrisList.forEach(debris => {
+        ctx.fillStyle = debris.type === "explosive" ? "orange" : debris.type === "speedy" ? "purple" : "red";
+        ctx.fillRect(debris.x, debris.y, debris.width, debris.height);
+      });
+
+      ctx.fillStyle = "green";
+      powerUpList.forEach(powerUp => {
+        ctx.fillStyle = powerUp.type === "health" ? "lime" : "yellow";
+        ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+      });
+    }
+
+    function renderGameOver() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; // Semi-transparent background
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "white";
+      ctx.font = "48px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 20);
+
+      ctx.font = "24px Arial";
+      ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+      ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2 + 60);
+    }
+
+    function showButtons() {
+      restartButton.style.display = "inline-block";
+      exitButton.style.display = "inline-block";
+    }
+
+    function restartGame() {
+      score = 0;
+      health = 5;
+      streak = 0;
+      debrisList.length = 0;
+      powerUpList.length = 0;
+      gameOver = false;
+      restartButton.style.display = "none";
+      exitButton.style.display = "none";
+      gameLoop();
+    }
+
+    function exitGame() {
+      alert("Thanks for playing!");
+      window.close();
+    }
+
+    restartButton.onclick = restartGame;
+    exitButton.onclick = exitGame;
+
+    function gameLoop() {
+      update();
+      render();
+      if (!gameOver) requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Impact Awareness & Protection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            background-color: #1e1e1e;
+            margin: 0;
+            padding: 0;
+        }
+        header, section {
+            text-align: center;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #ff9f43;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #222;
+            color: #fff;
+            border-radius: 8px;
+        }
+        .simulation input[type="range"] {
+            width: 100%;
+            margin: 15px 0;
+        }
+        .info-box {
+            background-color: #333;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+        .impact-result {
+            font-size: 18px;
+            color: #ff6347;
+        }
+        footer {
+            margin-top: 20px;
+            color: #ccc;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #ff9f43;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #ff6f00;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Asteroid Impact Awareness & Protection</h1>
+</header>
+
+<section>
+    <div class="container">
+        <h2>What are Near-Earth Objects (NEOs)?</h2>
+        <p>NEOs are comets and asteroids that have been nudged by the gravitational attraction of nearby planets into orbits that allow them to enter the Earth’s neighborhood.</p>
+        <div class="info-box">
+            <p>Scientists track NEOs using telescopes and radars, which help predict their paths and potential impact risks. By tracking these objects, we can calculate how close they might come to Earth.</p>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="container simulation">
+        <h2>Impact Simulation</h2>
+        <p>Choose an asteroid size to see its potential impact:</p>
+        <input type="range" id="asteroidSize" min="1" max="10" step="1" value="5">
+        <p>Size: <span id="sizeValue">5</span> (1 = Small Meteorite, 10 = Huge Asteroid)</p>
+        <button class="btn" onclick="calculateImpact()">Simulate Impact</button>
+        <p class="impact-result" id="impactResult"></p>
+    </div>
+</section>
+
+<section>
+    <div class="container">
+        <h2>Current Mitigation Efforts</h2>
+        <div class="info-box">
+            <h3>DART Mission</h3>
+            <p>The Double Asteroid Redirection Test (DART) is NASA's first mission to test technology for defending Earth against potential asteroid impacts. It aims to change the orbit of an asteroid by colliding a spacecraft with it.</p>
+        </div>
+        <div class="info-box">
+            <h3>NEO Surveyor Mission</h3>
+            <p>The NEO Surveyor is a proposed space-based infrared telescope to track potentially hazardous asteroids and comets, improving detection rates and enhancing our ability to prevent impacts.</p>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <p>&copy; 2024 Meta Cosmos. All rights reserved.</p>
+</footer>
+
+<script>
+    const asteroidSizeSlider = document.getElementById('asteroidSize');
+    const sizeValueDisplay = document.getElementById('sizeValue');
+    const impactResultDisplay = document.getElementById('impactResult');
+
+    asteroidSizeSlider.oninput = function() {
+        sizeValueDisplay.innerText = this.value;
+    };
+
+    function calculateImpact() {
+        const size = asteroidSizeSlider.value;
+        let impactResult = '';
+
+        if (size <= 3) {
+            impactResult = 'Minor impact, likely burns up in atmosphere.';
+        } else if (size <= 6) {
+            impactResult = 'Moderate impact, could cause regional damage.';
+        } else if (size <= 8) {
+            impactResult = 'Significant impact, severe damage in a large area.';
+        } else {
+            impactResult = 'Massive impact, potentially catastrophic for life on Earth.';
+        }
+
+        impactResultDisplay.innerText = impactResult;
+    }
+</script>
+
+</body>
+</html>
